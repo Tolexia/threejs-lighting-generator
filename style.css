@@ -1,0 +1,111 @@
+body { margin: 0; overflow: hidden; background: #0a0a0c; font-family: system-ui, sans-serif; }
+canvas { display: block; }
+#code-panel {
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    top: auto;
+    right: auto;
+    width: min(480px, 48vw);
+    max-height: 42vh;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(12, 12, 18, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #e8e8ec;
+    font-size: 13px;
+    z-index: 12;
+    box-sizing: border-box;
+}
+.code-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+.code-panel-head h2 {
+    flex: 1;
+    padding-right: 4px;
+}
+#code-panel h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+#code-panel .panel-toggle-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: -2px -4px -2px 0;
+    background: #1e1e28;
+    border: 1px solid #3a3a48;
+    border-radius: 6px;
+    color: #c8c8d4;
+    cursor: pointer;
+    font-size: 0;
+}
+#code-panel .panel-toggle-btn:hover { background: #2a2a38; color: #ececf2; }
+#code-panel .panel-toggle-btn svg {
+    display: block;
+    transition: transform 0.2s ease;
+}
+#code-panel:not(.is-collapsed) .panel-toggle-btn svg { transform: rotate(0deg); }
+#code-panel.is-collapsed .panel-toggle-btn svg { transform: rotate(-180deg); }
+#code-panel .row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+/* #code-panel .row sets display:flex; it beats the UA [hidden] rule, so hide explicitly */
+#code-panel .row[hidden] {
+    display: none !important;
+}
+#code-panel select, #code-panel button {
+    background: #1e1e28;
+    color: #eee;
+    border: 1px solid #3a3a48;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 12px;
+}
+#code-panel button { cursor: pointer; }
+#code-panel button:hover { background: #2a2a38; }
+#code-panel textarea {
+    flex: 1;
+    min-height: 160px;
+    max-height: 28vh;
+    resize: vertical;
+    background: #08080c;
+    color: #c8d4e0;
+    border: 1px solid #2a2a38;
+    border-radius: 4px;
+    padding: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.35;
+}
+#code-panel .checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    user-select: none;
+}
+#code-panel .checkbox-label input { accent-color: #6a8fc8; }
+#code-panel .hint { opacity: 0.65; font-size: 11px; line-height: 1.4; }
+#copy-status { min-height: 14px; color: #7d9; font-size: 12px; }
+#code-panel.is-collapsed textarea,
+#code-panel.is-collapsed #copy-status,
+#code-panel.is-collapsed .hint {
+    display: none;
+}

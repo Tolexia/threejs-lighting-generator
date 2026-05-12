@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js — Lighting Generator</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div id="code-panel" aria-label="Code export">
+        <div class="code-panel-head">
+            <h2>Code export — enabled lights only</h2>
+            <button type="button"
+                id="btn-toggle-export"
+                class="panel-toggle-btn"
+                aria-expanded="true"
+                aria-controls="export-code"
+                title="Collapse panel">
+                <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+        </div>
+        <div class="row">
+            <label for="export-format">Format</label>
+            <select id="export-format">
+                <option value="vanilla">Three.js (vanilla)</option>
+                <option value="r3f">React Three Fiber</option>
+            </select>
+        </div>
+        <div class="row" id="export-include-helpers-row">
+            <label class="checkbox-label" for="export-include-helpers">
+                <input type="checkbox" id="export-include-helpers" checked>
+                Include light helpers in exported code
+            </label>
+        </div>
+        <textarea id="export-code" readonly spellcheck="false"></textarea>
+        <div class="row">
+            <button type="button" id="btn-refresh-code">Refresh</button>
+            <button type="button" id="btn-copy-code">Copy to clipboard</button>
+        </div>
+        <div id="copy-status"></div>
+        <p class="hint">Updates as you change the GUI. Only lights with enabled on appear here. AmbientLight has no helper in Three.js.</p>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://esm.sh/three@0.183.0",
+                "three/addons/": "https://esm.sh/three@0.183.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
