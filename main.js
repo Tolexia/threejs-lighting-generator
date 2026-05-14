@@ -398,7 +398,7 @@ fRect.add(rectParams, 'rotYDeg', -180, 180, 1).name('rotationYDeg').onChange(onR
 fRect.add(rectParams, 'rotZDeg', -180, 180, 1).name('rotationZDeg').onChange(onRectChange);
 
 /**
- * Gizmos souris — un TransformControls par objet (r181+ : helper via getHelper(), pas scene.add(tc)).
+ * Mouse-driven translation gizmos: one TransformControls instance per target object.
  */
 function updateAllGuiDisplays(rootGui) {
     if (!rootGui || !rootGui.children) return;
@@ -466,6 +466,32 @@ const gizmoRect = createTranslateGizmo(() => {
     rectParams.posZ = rectLight.position.z;
 });
 
+/**
+ * Distance-based gizmo scale: lower setSize as the camera moves away from each attached object.
+ * TransformControls already grows handle geometry with world-space distance; this further reduces apparent on-screen size at long range.
+ */
+const LIGHT_GIZMO_SIZE_REF_DIST = 5.5;
+const LIGHT_GIZMO_SIZE_MIN = 0.22;
+const LIGHT_GIZMO_SIZE_MAX = 1;
+const lightGizmoWorldPos = new THREE.Vector3();
+const lightTransformControlsList = [
+    gizmoDir, gizmoDirTarget, gizmoHemi, gizmoPoint, gizmoSpot, gizmoSpotTarget, gizmoRect
+];
+
+function updateLightGizmoScreenScale() {
+    for (const tc of lightTransformControlsList) {
+        if (tc.object === undefined) continue;
+        tc.object.getWorldPosition(lightGizmoWorldPos);
+        const dist = camera.position.distanceTo(lightGizmoWorldPos);
+        const s = THREE.MathUtils.clamp(
+            LIGHT_GIZMO_SIZE_REF_DIST / Math.max(dist, 0.2),
+            LIGHT_GIZMO_SIZE_MIN,
+            LIGHT_GIZMO_SIZE_MAX
+        );
+        tc.setSize(s);
+    }
+}
+
 function syncLightGizmoAttachments() {
     if (dirParams.enabled) {
         gizmoDir.attach(dirLight);
@@ -499,6 +525,7 @@ applyRectFromParams();
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+    updateLightGizmoScreenScale();
     controls.update();
     dirHelper.update();
     spotHelper.update();

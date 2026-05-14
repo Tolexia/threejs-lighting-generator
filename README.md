@@ -15,13 +15,14 @@ A small web demo to **compose a lighting setup** in [Three.js](https://threejs.o
 - Reference scene (ground, cube, PBR materials) with **shadows** and **OrbitControls**.
 - **Light types** in a [lil-gui](https://lil-gui.georgealways.com/) panel: Ambient, Directional, Hemisphere, Point, Spot, RectArea (with `RectAreaLightUniformsLib`).
 - Per-light enable/disable and **helpers** (Ambient has no native helper in Three.js).
+- **Draggable gizmos** ([`TransformControls`](https://threejs.org/docs/#examples/en/controls/TransformControls)): translate each enabled light (and directional / spot **targets**) directly in the viewport; gizmo size scales with camera distance so handles stay usable when you zoom out.
 - **Code export** panel: **enabled** lights only, **vanilla Three.js** or **React Three Fiber** format, refresh and clipboard copy.
 - **Stats** (FPS) overlay for quick performance checks.
 
 ## Tech stack
 
 - Plain HTML, CSS, and ES modules.
-- Three.js **0.183.0** via [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap) and [esm.sh](https://esm.sh/) (`three` and `examples/jsm` addons).
+- Three.js **0.183.0** via [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap) and [jsDelivr](https://www.jsdelivr.com/) (`three.module.js` and `examples/jsm` addons).
 
 ## Run locally
 
