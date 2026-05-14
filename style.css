@@ -109,3 +109,36 @@ canvas { display: block; }
 #code-panel.is-collapsed .hint {
     display: none;
 }
+
+.support-link {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 12;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(12, 12, 18, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #a8a8be7c;
+    font-size: 13px;
+    text-decoration: none;
+    font-family: system-ui, sans-serif;
+    box-sizing: border-box;
+    letter-spacing: 0.5px;
+    opacity: 0.8;
+    transition: opacity 0.1s ease;
+}
+.support-link:hover {
+    color: #ececf2;
+    background: rgba(22, 22, 30, 0.96);
+    border-color: rgba(255, 255, 255, 0.2);
+    opacity: 1;
+}
+.support-link__icon {
+    flex-shrink: 0;
+    display: block;
+}
