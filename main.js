@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import GUI from 'three/addons/libs/lil-gui.module.min.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { RectAreaLightHelper } from 'three/addons/helpers/RectAreaLightHelper.js';
@@ -131,6 +132,7 @@ function applyDirFromParams() {
     dirLight.shadow.mapSize.set(s, s);
     dirLight.shadow.camera.updateProjectionMatrix();
     dirHelper.visible = dirParams.enabled && dirParams.showHelper;
+    syncLightGizmoAttachments();
     scheduleLightExport();
 }
 
@@ -161,6 +163,7 @@ function applyHemiFromParams() {
     hemiLight.groundColor.set(hemiParams.groundColor);
     hemiLight.position.set(hemiParams.posX, hemiParams.posY, hemiParams.posZ);
     hemiHelper.visible = hemiParams.enabled && hemiParams.showHelper;
+    syncLightGizmoAttachments();
     scheduleLightExport();
 }
 
@@ -197,6 +200,7 @@ function applyPointFromParams() {
     pointLight.castShadow = pointParams.castShadow;
     pointLight.position.set(pointParams.posX, pointParams.posY, pointParams.posZ);
     pointHelper.visible = pointParams.enabled && pointParams.showHelper;
+    syncLightGizmoAttachments();
     scheduleLightExport();
 }
 
@@ -248,6 +252,7 @@ function applySpotFromParams() {
     spotLight.position.set(spotParams.posX, spotParams.posY, spotParams.posZ);
     spotLight.target.position.set(spotParams.targetX, spotParams.targetY, spotParams.targetZ);
     spotHelper.visible = spotParams.enabled && spotParams.showHelper;
+    syncLightGizmoAttachments();
     scheduleLightExport();
 }
 
@@ -289,6 +294,7 @@ function applyRectFromParams() {
         THREE.MathUtils.degToRad(rectParams.rotZDeg)
     );
     rectAreaHelper.visible = rectParams.enabled && rectParams.showHelper;
+    syncLightGizmoAttachments();
     scheduleLightExport();
 }
 
@@ -390,6 +396,98 @@ fRect.add(rectParams, 'posZ', -15, 15, 0.05).name('positionZ').onChange(onRectCh
 fRect.add(rectParams, 'rotXDeg', -180, 180, 1).name('rotationXDeg').onChange(onRectChange);
 fRect.add(rectParams, 'rotYDeg', -180, 180, 1).name('rotationYDeg').onChange(onRectChange);
 fRect.add(rectParams, 'rotZDeg', -180, 180, 1).name('rotationZDeg').onChange(onRectChange);
+
+/**
+ * Gizmos souris — un TransformControls par objet (r181+ : helper via getHelper(), pas scene.add(tc)).
+ */
+function updateAllGuiDisplays(rootGui) {
+    if (!rootGui || !rootGui.children) return;
+    for (const child of rootGui.children) {
+        if (child instanceof GUI) {
+            updateAllGuiDisplays(child);
+        } else if (typeof child.updateDisplay === 'function') {
+            child.updateDisplay();
+        }
+    }
+}
+
+function createTranslateGizmo(onChange) {
+    const tc = new TransformControls(camera, renderer.domElement);
+    tc.setMode('translate');
+    tc.setSize(1.0);
+    scene.add(tc.getHelper());
+    tc.addEventListener('mouseDown', () => {
+        controls.enabled = false;
+    });
+    tc.addEventListener('mouseUp', () => {
+        controls.enabled = true;
+        updateAllGuiDisplays(gui);
+    });
+    tc.addEventListener('change', () => {
+        onChange();
+        scheduleLightExport();
+    });
+    return tc;
+}
+
+const gizmoDir = createTranslateGizmo(() => {
+    dirParams.posX = dirLight.position.x;
+    dirParams.posY = dirLight.position.y;
+    dirParams.posZ = dirLight.position.z;
+});
+const gizmoDirTarget = createTranslateGizmo(() => {
+    dirParams.targetX = dirLight.target.position.x;
+    dirParams.targetY = dirLight.target.position.y;
+    dirParams.targetZ = dirLight.target.position.z;
+});
+const gizmoHemi = createTranslateGizmo(() => {
+    hemiParams.posX = hemiLight.position.x;
+    hemiParams.posY = hemiLight.position.y;
+    hemiParams.posZ = hemiLight.position.z;
+});
+const gizmoPoint = createTranslateGizmo(() => {
+    pointParams.posX = pointLight.position.x;
+    pointParams.posY = pointLight.position.y;
+    pointParams.posZ = pointLight.position.z;
+});
+const gizmoSpot = createTranslateGizmo(() => {
+    spotParams.posX = spotLight.position.x;
+    spotParams.posY = spotLight.position.y;
+    spotParams.posZ = spotLight.position.z;
+});
+const gizmoSpotTarget = createTranslateGizmo(() => {
+    spotParams.targetX = spotLight.target.position.x;
+    spotParams.targetY = spotLight.target.position.y;
+    spotParams.targetZ = spotLight.target.position.z;
+});
+const gizmoRect = createTranslateGizmo(() => {
+    rectParams.posX = rectLight.position.x;
+    rectParams.posY = rectLight.position.y;
+    rectParams.posZ = rectLight.position.z;
+});
+
+function syncLightGizmoAttachments() {
+    if (dirParams.enabled) {
+        gizmoDir.attach(dirLight);
+        gizmoDirTarget.attach(dirLight.target);
+    } else {
+        gizmoDir.detach();
+        gizmoDirTarget.detach();
+    }
+    if (hemiParams.enabled) gizmoHemi.attach(hemiLight);
+    else gizmoHemi.detach();
+    if (pointParams.enabled) gizmoPoint.attach(pointLight);
+    else gizmoPoint.detach();
+    if (spotParams.enabled) {
+        gizmoSpot.attach(spotLight);
+        gizmoSpotTarget.attach(spotLight.target);
+    } else {
+        gizmoSpot.detach();
+        gizmoSpotTarget.detach();
+    }
+    if (rectParams.enabled) gizmoRect.attach(rectLight);
+    else gizmoRect.detach();
+}
 
 applyAmbFromParams();
 applyDirFromParams();
