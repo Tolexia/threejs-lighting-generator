@@ -4,6 +4,7 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import GUI from 'three/addons/libs/lil-gui.module.min.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { RectAreaLightHelper } from 'three/addons/helpers/RectAreaLightHelper.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import Stats from 'three/addons/libs/stats.module.js';
 
 /**
@@ -51,7 +52,13 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Box
+// Subject (default box or loaded GLB)
+const SUBJECT_TARGET_SIZE = 1.2;
+const subject = new THREE.Group();
+const subjectPivot = new THREE.Group();
+scene.add(subject);
+subject.add(subjectPivot);
+
 const box = new THREE.Mesh(
     new THREE.BoxGeometry(1.2, 1.2, 1.2),
     new THREE.MeshStandardMaterial({ color: 0x8a8a98, roughness: 0.45, metalness: 0.15 })
@@ -59,7 +66,140 @@ const box = new THREE.Mesh(
 box.position.y = 0.6;
 box.castShadow = true;
 box.receiveShadow = true;
-scene.add(box);
+subjectPivot.add(box);
+
+let loadedModel = null;
+let baseFitScale = 1;
+const gltfLoader = new GLTFLoader();
+
+const subjectParams = {
+    scale: 1,
+    posX: 0,
+    posY: 0,
+    posZ: 0,
+    status: 'Default box'
+};
+
+function enableShadows(root) {
+    root.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
+}
+
+function disposeObject3D(root) {
+    root.traverse((child) => {
+        if (child.isMesh) {
+            child.geometry?.dispose();
+            const { material } = child;
+            if (Array.isArray(material)) {
+                material.forEach((m) => m.dispose());
+            } else {
+                material?.dispose();
+            }
+        }
+    });
+}
+
+function applySubjectScale() {
+    subjectPivot.scale.setScalar(subjectParams.scale);
+}
+
+function applySubjectPosition() {
+    subject.position.set(subjectParams.posX, subjectParams.posY, subjectParams.posZ);
+}
+
+function layoutModelOnGround(model) {
+    model.position.set(0, 0, 0);
+    model.scale.setScalar(1);
+
+    const box3 = new THREE.Box3().setFromObject(model);
+    const size = box3.getSize(new THREE.Vector3());
+    const center = box3.getCenter(new THREE.Vector3());
+
+    model.position.sub(center);
+
+    const groundedBox = new THREE.Box3().setFromObject(model);
+    model.position.y -= groundedBox.min.y;
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    baseFitScale = maxDim > 0 ? SUBJECT_TARGET_SIZE / maxDim : 1;
+    model.scale.setScalar(baseFitScale);
+}
+
+function resetSubjectToBox() {
+    if (loadedModel) {
+        subjectPivot.remove(loadedModel);
+        disposeObject3D(loadedModel);
+        loadedModel = null;
+    }
+    baseFitScale = 1;
+    box.scale.setScalar(1);
+    box.position.set(0, 0.6, 0);
+    if (!subjectPivot.children.includes(box)) {
+        subjectPivot.add(box);
+    }
+    subjectParams.scale = 1;
+    subjectParams.posX = 0;
+    subjectParams.posY = 0;
+    subjectParams.posZ = 0;
+    subjectParams.status = 'Default box';
+    applySubjectScale();
+    applySubjectPosition();
+    subjectScaleController?.updateDisplay();
+    subjectStatusController?.updateDisplay();
+}
+
+function setLoadedModel(model) {
+    if (loadedModel) {
+        subjectPivot.remove(loadedModel);
+        disposeObject3D(loadedModel);
+    }
+    if (subjectPivot.children.includes(box)) {
+        subjectPivot.remove(box);
+    }
+    loadedModel = model;
+    enableShadows(loadedModel);
+    layoutModelOnGround(loadedModel);
+    subjectPivot.add(loadedModel);
+    applySubjectScale();
+    subjectParams.status = 'GLB loaded';
+}
+
+const glbFileInput = document.createElement('input');
+glbFileInput.type = 'file';
+glbFileInput.accept = '.glb,.gltf';
+glbFileInput.hidden = true;
+document.body.appendChild(glbFileInput);
+
+glbFileInput.addEventListener('change', () => {
+    const file = glbFileInput.files?.[0];
+    glbFileInput.value = '';
+    if (!file) return;
+
+    subjectParams.status = 'Loading…';
+    subjectStatusController?.updateDisplay();
+
+    const objectUrl = URL.createObjectURL(file);
+    gltfLoader.load(
+        objectUrl,
+        (gltf) => {
+            URL.revokeObjectURL(objectUrl);
+            setLoadedModel(gltf.scene);
+            subjectParams.status = `Loaded: ${file.name}`;
+            subjectStatusController?.updateDisplay();
+        },
+        undefined,
+        (err) => {
+            URL.revokeObjectURL(objectUrl);
+            subjectParams.status = `Error: ${err?.message || 'load failed'}`;
+            subjectStatusController?.updateDisplay();
+            console.error('GLB load failed:', err);
+        }
+    );
+});
 
 /**
  * Lights
@@ -319,11 +459,33 @@ function scheduleLightExport() {
 
 const gui = new GUI({ title: 'Lights' });
 
+// Subject (Box or GLB)
+const fSubject = gui.addFolder('Subject');
+const subjectActions = {
+    loadGLB() {
+        glbFileInput.click();
+    },
+    resetToBox() {
+        resetSubjectToBox();
+    }
+};
+fSubject.add(subjectActions, 'loadGLB').name('Load GLB…');
+fSubject.add(subjectActions, 'resetToBox').name('Reset to box');
+let subjectScaleController;
+subjectScaleController = fSubject.add(subjectParams, 'scale', 0.1, 5, 0.01).name('scale').onChange(applySubjectScale);
+fSubject.add(subjectParams, 'posX', -20, 20, 0.05).name('positionX').onChange(applySubjectPosition);
+fSubject.add(subjectParams, 'posY', -2, 20, 0.05).name('positionY').onChange(applySubjectPosition);
+fSubject.add(subjectParams, 'posZ', -20, 20, 0.05).name('positionZ').onChange(applySubjectPosition);
+let subjectStatusController;
+subjectStatusController = fSubject.add(subjectParams, 'status').name('status').disable();
+
+// AmbientLight
 const fAmb = gui.addFolder('AmbientLight');
 fAmb.add(ambientParams, 'enabled').name('enabled').onChange(applyAmbFromParams);
 fAmb.add(ambientParams, 'intensity', 0, 2, 0.01).name('intensity').onChange(applyAmbFromParams);
 fAmb.addColor(ambientParams, 'color').name('color').onChange(applyAmbFromParams);
 
+// DirectionalLight
 const fDir = gui.addFolder('DirectionalLight');
 fDir.add(dirParams, 'enabled').name('enabled').onChange(applyDirFromParams);
 fDir.add(dirParams, 'showHelper').name('showHelper').onChange(applyDirFromParams);
@@ -339,6 +501,7 @@ fDir.add(dirParams, 'castShadow').name('castShadow').onChange(applyDirFromParams
 fDir.add(dirParams, 'shadowBias', -0.002, 0.002, 0.00001).name('shadowBias').onChange(applyDirFromParams);
 fDir.add(dirParams, 'shadowMapSize', [256, 512, 1024, 2048, 4096]).name('shadowMapSize').onChange(applyDirFromParams);
 
+// HemisphereLight
 const fHemi = gui.addFolder('HemisphereLight');
 fHemi.add(hemiParams, 'enabled').name('enabled').onChange(applyHemiFromParams);
 fHemi.add(hemiParams, 'showHelper').name('showHelper').onChange(applyHemiFromParams);
@@ -349,6 +512,7 @@ fHemi.add(hemiParams, 'posX', -20, 20, 0.05).name('positionX').onChange(applyHem
 fHemi.add(hemiParams, 'posY', 0, 30, 0.05).name('positionY').onChange(applyHemiFromParams);
 fHemi.add(hemiParams, 'posZ', -20, 20, 0.05).name('positionZ').onChange(applyHemiFromParams);
 
+// PointLight
 const fPoint = gui.addFolder('PointLight');
 fPoint.add(pointParams, 'enabled').name('enabled').onChange(applyPointFromParams);
 fPoint.add(pointParams, 'showHelper').name('showHelper').onChange(applyPointFromParams);
@@ -361,6 +525,7 @@ fPoint.add(pointParams, 'posX', -20, 20, 0.05).name('positionX').onChange(applyP
 fPoint.add(pointParams, 'posY', 0, 20, 0.05).name('positionY').onChange(applyPointFromParams);
 fPoint.add(pointParams, 'posZ', -20, 20, 0.05).name('positionZ').onChange(applyPointFromParams);
 
+// SpotLight
 const fSpot = gui.addFolder('SpotLight');
 fSpot.add(spotParams, 'enabled').name('enabled').onChange(applySpotFromParams);
 fSpot.add(spotParams, 'showHelper').name('showHelper').onChange(applySpotFromParams);
@@ -378,6 +543,7 @@ fSpot.add(spotParams, 'targetX', -10, 10, 0.05).name('targetX').onChange(applySp
 fSpot.add(spotParams, 'targetY', -2, 10, 0.05).name('targetY').onChange(applySpotFromParams);
 fSpot.add(spotParams, 'targetZ', -10, 10, 0.05).name('targetZ').onChange(applySpotFromParams);
 
+// RectAreaLight
 const fRect = gui.addFolder('RectAreaLight');
 const onRectChange = () => { applyRectFromParams(); };
 const onRectResize = () => {
@@ -430,6 +596,13 @@ function createTranslateGizmo(onChange) {
     return tc;
 }
 
+const gizmoSubject = createTranslateGizmo(() => {
+    subjectParams.posX = subject.position.x;
+    subjectParams.posY = subject.position.y;
+    subjectParams.posZ = subject.position.z;
+});
+gizmoSubject.attach(subject);
+
 const gizmoDir = createTranslateGizmo(() => {
     dirParams.posX = dirLight.position.x;
     dirParams.posY = dirLight.position.y;
@@ -475,7 +648,7 @@ const LIGHT_GIZMO_SIZE_MIN = 0.22;
 const LIGHT_GIZMO_SIZE_MAX = 1;
 const lightGizmoWorldPos = new THREE.Vector3();
 const lightTransformControlsList = [
-    gizmoDir, gizmoDirTarget, gizmoHemi, gizmoPoint, gizmoSpot, gizmoSpotTarget, gizmoRect
+    gizmoSubject, gizmoDir, gizmoDirTarget, gizmoHemi, gizmoPoint, gizmoSpot, gizmoSpotTarget, gizmoRect
 ];
 
 function updateLightGizmoScreenScale() {
